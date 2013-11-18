@@ -50,9 +50,7 @@ def getStockInfoByCodeAndPageNum(Code, pages):
     html = response.read()
     return html
 
-def ListToCSV(dataList,filename): # 寫入 CSV
-    if not os.path.exists('../BSR'):
-        os.makedirs('../BSR')    
+def ListToCSV(dataList,filename): # 寫入 CSV   
     with open('../BSR/'+filename, 'wb') as csvfile:
         writer = csv.writer(csvfile,dialect='excel')
         writer.writerows(dataList)
@@ -154,10 +152,15 @@ def getTradeDate():
         return sp_Date
     except Exception , e:
         print e
-         
+
+def chkBSRpath():
+    if not os.path.exists('../BSR'):
+        os.makedirs('../BSR')     
+    
 if __name__ == '__main__':
     global g_date
     g_date = getTradeDate()
+    chkBSRpath()
     CodeDict = getCodeDict()
     #CodeDict = {"OTC":[3498],"TSE":[2330]}
     for idx,code in enumerate(CodeDict['TSE']):
