@@ -31,9 +31,6 @@ def getPageNumber(Code):
                         ,'__EVENTVALIDATION':__EVENTVALIDATION
                         ,'HiddenField_spDate':sp_Date
                         ,'btnOK':'%E6%9F%A5%E8%A9%A2'}
-        global g_date
-        g_date = sp_Date
-        
         postData = urllib.urlencode( PostDataDict)
         req = urllib2.Request( base_url , postData)
         response = urllib2.urlopen( req)
@@ -88,7 +85,7 @@ def parsingHtmlToList(html):
     stock_info_list.insert(0, title)
     return stock_info_list
     
-def downloadCSV(Code):
+def downloadTseCSV(Code):
     pagenums = getPageNumber(Code)
     if pagenums == None:
         print '(%s)非上市股票'%Code
@@ -101,7 +98,7 @@ def downloadCSV(Code):
     filename = '%s_%s.csv'%(Code,g_date)
     ListToCSV(stock_list,filename)
     # 寫入資料
-    print u'complieted\n\n'
+    print u'complieted\n'
     
 
 def getCodeDict():
@@ -118,9 +115,54 @@ def getCodeDict():
             except IndexError:
                 print 'You have an empty row'    
     return CodeDict
+
+def downloadOtcCSV(code): 
+    #g_date = '20131118'
+    try:
+        otcyear = int(g_date)/int(10000) - 1911
+        otcdate = str(otcyear)+g_date[4:]
+        base_url = 'http://www.gretai.org.tw/ch/stock/aftertrading/broker_trading/download_ALLCSV.php'
+        PostDataDict = {'curstk':code
+                        , 'fromw':'0'
+                        ,'numbern':'100'
+                        ,'stk_date':otcdate
+                        }
     
+        postData = urllib.urlencode( PostDataDict)
+        req = urllib2.Request( base_url , postData)
+        response = urllib2.urlopen( req)
+        html = response.read()
+    except Exception , e:
+        print e
+        return
+    #filename = response.info()['Content-Disposition'].split('filename=')[1]
+    filename = "%s_%s.csv"%(code,g_date)
+    if filename[0] == "" :
+        return
+    with open('../BSR/'+filename, 'wb') as f:
+        f.write(html)
+    print u'complieted\n'
+    
+def getTradeDate():
+    try:
+        base_url = 'http://bsr.twse.com.tw/bshtm/bsMenu.aspx'
+        req = urllib2.Request(base_url)
+        response = urllib2.urlopen(req)
+        html = response.read()
+        soup = BeautifulSoup(html)
+        sp_Date  = soup.find(attrs={"id":"sp_Date"}).contents[0]   
+        return sp_Date
+    except Exception , e:
+        print e
+         
 if __name__ == '__main__':
+    global g_date
+    g_date = getTradeDate()
     CodeDict = getCodeDict()
-    #code_list = ['1101','1102','5483']
-    for code in CodeDict['TSE']:
-        downloadCSV(code)
+    #CodeDict = {"OTC":[3498],"TSE":[2330]}
+    for idx,code in enumerate(CodeDict['TSE']):
+        print 'TSE(%s) : %d/%d'%(code,idx,len(CodeDict['TSE']))
+        downloadTseCSV(code)
+    for idx,code in enumerate(CodeDict['OTC']):
+        print 'OTC(%s) : %d/%d'%(code,idx,len(CodeDict['OTC']))
+        downloadOtcCSV(code)
