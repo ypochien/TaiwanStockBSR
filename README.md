@@ -2,8 +2,14 @@ StealStockWealth
 ================
 
 This's something to do for me. 
+
 Python practice. 
+
 collect Taiwan Stock Exchange information toolkit. 
+
+	TSE - http://bsr.twse.com.tw/bshtm/
+
+	OTC - http://www.gretai.org.tw/ch/stock/aftertrading/broker_trading/brokerBS.php
 
 using module 
 	BeautifulSoup - http://www.crummy.com/software/BeautifulSoup/ 
