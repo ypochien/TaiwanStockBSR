@@ -54,6 +54,8 @@ def getStockInfoByCodeAndPageNum(Code, pages):
     return html
 
 def ListToCSV(dataList,filename): # 寫入 CSV
+    if not os.path.exists('../BSR'):
+        os.makedirs('../BSR')    
     with open('../BSR/'+filename, 'wb') as csvfile:
         writer = csv.writer(csvfile,dialect='excel')
         writer.writerows(dataList)
@@ -102,20 +104,23 @@ def downloadCSV(Code):
     print u'complieted\n\n'
     
 
-def GetCodeList():
-    CodeList = []
+def GetCodeDict():
+    CodeDict = {'TSE' : [] , 'OTC': [] } 
     with open('../data/smast.dat','r') as f:
         for row in f:
             try:
-                if row[14] == '0' and len(row[:6].strip())== 4 :
+                if len(row[:6].strip())== 4 : #忽略權證,公司債
                     print row[:15]
-                    CodeList.append(row[:4])
+                    if row[14] == '0': #TSE_上市
+                        CodeDict['TSE'].append(row[:4])
+                    if row[14] == '1': #OTC_上櫃
+                        CodeDict['OTC'].append(row[:4])
             except IndexError:
                 print 'You have an empty row'    
-    return CodeList
+    return CodeDict
     
 if __name__ == '__main__':
-    Code_list = GetCodeList()
+    CodeDict = GetCodeDict()
     #code_list = ['1101','1102','5483']
-    for code in Code_list:
+    for code in CodeDict['TSE']:
         downloadCSV(code)
