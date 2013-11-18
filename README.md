@@ -5,26 +5,28 @@ This's something to do for me.
 
 Python practice. 
 
-collect Taiwan Stock Exchange information toolkit. 
+##collect Taiwan Stock Exchange information toolkit. 
 
-	TSE - http://bsr.twse.com.tw/bshtm/
+ 1. TSE - http://bsr.twse.com.tw/bshtm/
+ 1. OTC - http://www.gretai.org.tw/ch/stock/aftertrading/broker_trading/brokerBS.php
 
-	OTC - http://www.gretai.org.tw/ch/stock/aftertrading/broker_trading/brokerBS.php
+##usage:
 
-using module 
-	BeautifulSoup - http://www.crummy.com/software/BeautifulSoup/ 
+###using module 
+  BeautifulSoup - http://www.crummy.com/software/BeautifulSoup/ 
+ 
+ 1. install BeautifulSoup
 
-usage:
-
-	install BeautifulSoup
-	
+ 2. run  
+ <code>
 	python GetTWSE.py
-	
-	and wait csv download in BSR folder.
-	
-Todo.
+ </code>
 
-	1. maybe using 're' replace BeautifulSoup
-	2. add OTC information.
-	3. csv to db
-	4. Web GUI...
+ and wait csv download in BSR folder.
+	
+##Todo.
+
+ * maybe using 're' replace BeautifulSoup
+ * ~~add OTC information.~~
+ * csv to db
+ * Web GUI...
