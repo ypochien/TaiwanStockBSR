@@ -9,6 +9,7 @@ using module
 	BeautifulSoup - http://www.crummy.com/software/BeautifulSoup/ 
 
 usage:
+
 	install BeautifulSoup
 	
 	python GetTWSE.py
