@@ -16,12 +16,17 @@ Python practice.
   BeautifulSoup - http://www.crummy.com/software/BeautifulSoup/ 
  
  1. install BeautifulSoup
- 1. python GetTWSE.py
+
+ 2. run  
+ <code>
+	python GetTWSE.py
+ </code>
+
  and wait csv download in BSR folder.
 	
 ##Todo.
 
- 1. maybe using 're' replace BeautifulSoup
- 1. add OTC information.
- 1. csv to db
- 1. Web GUI...
+ * maybe using 're' replace BeautifulSoup
+ * ~~add OTC information.~~
+ * csv to db
+ * Web GUI...
