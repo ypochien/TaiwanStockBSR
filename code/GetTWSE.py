@@ -104,7 +104,7 @@ def downloadCSV(Code):
     print u'complieted\n\n'
     
 
-def GetCodeDict():
+def getCodeDict():
     CodeDict = {'TSE' : [] , 'OTC': [] } 
     with open('../data/smast.dat','r') as f:
         for row in f:
@@ -120,7 +120,7 @@ def GetCodeDict():
     return CodeDict
     
 if __name__ == '__main__':
-    CodeDict = GetCodeDict()
+    CodeDict = getCodeDict()
     #code_list = ['1101','1102','5483']
     for code in CodeDict['TSE']:
         downloadCSV(code)
