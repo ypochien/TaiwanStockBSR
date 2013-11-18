@@ -10,7 +10,9 @@ using module
 
 usage:
 	install BeautifulSoup
+	
 	python GetTWSE.py
+	
 	and wait csv download in BSR folder.
 	
 Todo.
