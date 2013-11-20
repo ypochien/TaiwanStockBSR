@@ -19,7 +19,7 @@ Python practice.
 
  2. run  
  <code>
-	python GetTWSE.py
+	python GetTWBSR.py
  </code>
 
  and wait csv download in BSR folder.
