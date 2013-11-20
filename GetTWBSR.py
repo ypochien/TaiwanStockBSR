@@ -7,6 +7,8 @@ from datetime import datetime
 import os
 from time import strftime
 from time import sleep
+from time import time
+
 from types import *
 
 
@@ -185,18 +187,18 @@ class DownloadOTCBot(DownloadBotBase):
             return True
         
         self.RawBSR = "OTC"
-        ret = DownloadOTC(Code,filename,self.date)
+        ret = DownloadOTC(Code,filename,self.getOtcDate())
         if None == ret:
             return None
         return True
             
-    def Date(self):
-        return str(int(self.date[0:3])+1911)+self.date[3:] #1020101
+    def getOtcDate(self):
+        otcyear = int(self.date)/int(10000) - 1911
+        otcdate = str(otcyear) + self.date[4:]
+        return otcdate
     
-    def setDate(self,date): # OTC 使用民國年
-        otcyear = int(date)/int(10000) - 1911
-        otcdate = str(otcyear) + date[4:]
-        self.date = otcdate
+    def setOtcDate(self,date):
+        self.date =  str(int(date[0:3]) + 1911) + date[3:] #1020101
 
 def getCodeDict():
     CodeDict = {'TSE' : [] , 'OTC': [] } 
@@ -220,15 +222,21 @@ if __name__ == '__main__':
     CodeDict = getCodeDict()
     print 'TSE:%d OTC:%d'%(len(CodeDict['TSE']),len(CodeDict['OTC']))
     
+    tStart = time()
+
     TSE = DownloadTSEBot()
+    TSE.setDate("20131120")
     TSE.setCode(CodeDict['TSE'])
     TSE.Run()
-
+    tEndTSE = time()
+    
     OTC = DownloadOTCBot()
+    OTC.setDate('20131120')
     OTC.setCode(CodeDict['OTC'])
     OTC.Run()
+    tEndOTC = time()
 
-    print 'End...'
+    print 'End...TSE(%f) OTC(%f) Total(%f)'%(tEndTSE-tStart,tEndOTC-tEndTSE,tEndOTC-tStart)
 
     
 
