@@ -12,7 +12,7 @@ Python practice.
 
 ##usage:
 
-###using module 
+###require module 
   BeautifulSoup - http://www.crummy.com/software/BeautifulSoup/ 
  
  1. install BeautifulSoup
@@ -26,7 +26,7 @@ Python practice.
 	
 ##Todo.
 
- * maybe using 're' replace BeautifulSoup
  * ~~add OTC information.~~
+ * maybe using 're' replace BeautifulSoup
  * csv to db
  * Web GUI...
