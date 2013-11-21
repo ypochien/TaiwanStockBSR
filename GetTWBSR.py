@@ -205,12 +205,16 @@ def getCodeDict():
     with open('data/smast.dat','r') as f:
         for row in f:
             try:
-                if len(row[:6].strip())== 4 : #忽略權證,公司債
-                    print row[:15]
-                    if row[14] == '0': #TSE_上市
-                        CodeDict['TSE'].append(row[:4])
-                    if row[14] == '1': #OTC_上櫃
-                        CodeDict['OTC'].append(row[:4])
+                code = row[:6].strip()
+                row = row.decode('utf-8').encode('cp950')
+                if len(code)== 4 : #忽略權證,公司債
+                    print '(%d)%s'%(len(row),row[6:13])
+                    if row[12] == '0': #TSE_上市
+                        CodeDict['TSE'].append(code)
+                    elif row[12] == '1': #OTC_上櫃
+                        CodeDict['OTC'].append(code)
+                    else:
+                        print u'*************************'
             except IndexError:
                 print 'You have an empty row'    
     return CodeDict
