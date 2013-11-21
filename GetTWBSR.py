@@ -5,6 +5,8 @@ import sys
 import csv
 from datetime import datetime
 import os
+import threading
+import Queue
 from time import strftime
 from time import sleep
 from time import time
@@ -14,6 +16,43 @@ from types import *
 # TSE : Taiwan Stock Exchange , 台灣證交所 （上市）
 # OTC : Over-the-Counter , 櫃檯中心 （上櫃）
 # BSR : Buy Sell Report , 分公司買賣進出表
+
+
+class ThreadingDownloadBot(threading.Thread):
+    def __init__(self,pid,queue,tradedate):
+        threading.Thread.__init__(self)
+        self.queue = queue
+        self.date = tradedate
+        self.pid = pid
+        
+    def Date(self):
+        return str(self.date)
+    def setDate(self,date):
+        self.date = date    
+    def run(self):
+        while(True):
+            Code = self.queue.get()
+            retry = 0
+            if len(Code) == 5:
+                retry = int(Code[4])
+            filename = "%s_%s.csv"%(Code,self.Date())
+            print '[%d]Process:[%s] Left:%d retry:%d'%(self.pid,Code,self.queue.qsize(),retry)
+            ret = self.RunImp(Code, filename)
+
+            if None == ret:
+                retry +=1
+                if retry > 3:
+                    print '%s 下載三次失敗'%(Code)
+                else:
+                    retryCode = Code+str(retry)
+                    self.queue.put(retryCode)
+                    print '********fail*******'
+                    sleep( 1 ) #有錯誤停1秒
+            else:
+                print '\t(%d)Write %s Finish...'%(self.pid,filename)
+            
+            self.queue.task_done()
+            
 
 class DownloadBotBase(object):
     def __init__(self):
@@ -72,11 +111,10 @@ class DownloadBotBase(object):
             print '\tWrite %s Finish...'%(filename)
         
         
-class DownloadTSEBot(DownloadBotBase):
-    def __init__(self):
-        super(DownloadTSEBot, self).__init__()
+class DownloadTSEBot(ThreadingDownloadBot):
+    def __init__(self,pid,queue,tradedate):
+        super(DownloadTSEBot, self).__init__(pid,queue,tradedate)
         self.name = "TSE BSR Download Bot."
-        
     def RunImp(self,Code,filename):
 
         # step 1. GetMaxPage and POST data
@@ -90,7 +128,7 @@ class DownloadTSEBot(DownloadBotBase):
                 __VIEWSTATE  = soup.find(attrs={"id": "__VIEWSTATE"})['value']
                 sp_Date  = soup.find(attrs={"id":"sp_Date"}).contents[0]
                 print 'Trade date(%s)'%sp_Date
-                __EVENTVALIDATION = soup.find(attrs={"id": "__EVENTVALIDATION"})['value']#.get('Value')
+                __EVENTVALIDATION = soup.find(attrs={"id": "__EVENTVALIDATION"})['value']
         
                 PostDataDict = {'__EVENTTARGET':''
                                 , '__EVENTARGUMENT':''
@@ -130,14 +168,14 @@ class DownloadTSEBot(DownloadBotBase):
             #取得資料表title 
             title_contents =  soup.find(attrs={ 'class': 'column_title_1'})
             title_list = title_contents.find_all('td')
-            title = [title.get_text().encode('big5') for title in title_list]
+            title = [title.get_text().encode('cp950') for title in title_list]
             
             #取得各分公司買賣內容
             stock_info_content = soup.find_all(attrs={'class':['column_value_price_3','column_value_price_2']})
             CSVData = []
             for i in stock_info_content:
                 row_list = i.find_all('td')
-                row = [row.get_text().strip().encode('big5') for row in row_list]
+                row = [row.get_text().strip().encode('cp950') for row in row_list]
                 if len(row[0]) > 0:
                     #print '[%s]'%row[0]
                     CSVData.append(row)
@@ -163,9 +201,9 @@ class DownloadTSEBot(DownloadBotBase):
         CSVToFile(CSVData, filename)
         return True
       
-class DownloadOTCBot(DownloadBotBase):
-    def __init__(self):
-        super(DownloadOTCBot, self).__init__()
+class DownloadOTCBot(ThreadingDownloadBot):
+    def __init__(self,pid,queue,tradedate):
+        super(DownloadOTCBot, self).__init__(pid,queue,tradedate)
         self.name = "OTC BSR Download Bot."
     
     def RunImp(self,Code,filename):
@@ -234,10 +272,30 @@ if __name__ == '__main__':
     
     tStart = time()
     
-    OTC = DownloadOTCBot()
-    OTC.setDate(tradedate)
-    OTC.setCode(CodeDict['OTC'])
-    OTC.Run()
+    OTCqueue = Queue.Queue() 
+    for i in range(20):
+        t = DownloadOTCBot(i,OTCqueue,tradedate)
+        t.setDaemon(True)
+        t.start()
+    TSEqueue = Queue.Queue()
+    for i in range(3):
+        t = DownloadTSEBot(i,TSEqueue,tradedate)
+        t.setDaemon(True)
+        t.start()        
+
+    for Code in CodeDict['OTC']:
+        OTCqueue.put(Code)
+        
+    for Code in CodeDict['TSE']:
+        TSEqueue.put(Code)
+
+    OTCqueue.join()
+    TSEqueue.join()
+    
+    #OTC = DownloadOTCBot()
+    #OTC.setDate(tradedate)
+    #OTC.setCode(CodeDict['OTC'])
+    #OTC.Run()
     
     tEndOTC = time()
     
