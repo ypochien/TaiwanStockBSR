@@ -241,10 +241,10 @@ if __name__ == '__main__':
     
     tEndOTC = time()
     
-    TSE = DownloadTSEBot()
-    TSE.setDate(tradedate)
-    TSE.setCode(CodeDict['TSE'])
-    TSE.Run()
+    #TSE = DownloadTSEBot()
+    #TSE.setDate(tradedate)
+    #TSE.setCode(CodeDict['TSE'])
+    #TSE.Run()
     tEndTSE = time()
     
 
