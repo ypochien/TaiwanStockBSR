@@ -128,7 +128,7 @@ class DownloadTSEBot(ThreadingDownloadBot):
                 __VIEWSTATE  = soup.find(attrs={"id": "__VIEWSTATE"})['value']
                 sp_Date  = soup.find(attrs={"id":"sp_Date"}).contents[0]
                 print 'Trade date(%s)'%sp_Date
-                __EVENTVALIDATION = soup.find(attrs={"id": "__EVENTVALIDATION"})['value']#.get('Value')
+                __EVENTVALIDATION = soup.find(attrs={"id": "__EVENTVALIDATION"})['value']
         
                 PostDataDict = {'__EVENTTARGET':''
                                 , '__EVENTARGUMENT':''
@@ -168,14 +168,14 @@ class DownloadTSEBot(ThreadingDownloadBot):
             #取得資料表title 
             title_contents =  soup.find(attrs={ 'class': 'column_title_1'})
             title_list = title_contents.find_all('td')
-            title = [title.get_text().encode('big5') for title in title_list]
+            title = [title.get_text().encode('cp950') for title in title_list]
             
             #取得各分公司買賣內容
             stock_info_content = soup.find_all(attrs={'class':['column_value_price_3','column_value_price_2']})
             CSVData = []
             for i in stock_info_content:
                 row_list = i.find_all('td')
-                row = [row.get_text().strip().encode('big5') for row in row_list]
+                row = [row.get_text().strip().encode('cp950') for row in row_list]
                 if len(row[0]) > 0:
                     #print '[%s]'%row[0]
                     CSVData.append(row)
@@ -272,18 +272,26 @@ if __name__ == '__main__':
     
     tStart = time()
     
-    queue = Queue.Queue()    
-    for i in range(5):
-        t = DownloadOTCBot(i,queue,tradedate)
+    OTCqueue = Queue.Queue() 
+    for i in range(20):
+        t = DownloadOTCBot(i,OTCqueue,tradedate)
         t.setDaemon(True)
         t.start()
-    
-    
+    TSEqueue = Queue.Queue()
+    for i in range(3):
+        t = DownloadTSEBot(i,TSEqueue,tradedate)
+        t.setDaemon(True)
+        t.start()        
+
     for Code in CodeDict['OTC']:
-        queue.put(Code)
+        OTCqueue.put(Code)
+        
+    for Code in CodeDict['TSE']:
+        TSEqueue.put(Code)
+
+    OTCqueue.join()
+    TSEqueue.join()
     
-    
-    queue.join()
     #OTC = DownloadOTCBot()
     #OTC.setDate(tradedate)
     #OTC.setCode(CodeDict['OTC'])
