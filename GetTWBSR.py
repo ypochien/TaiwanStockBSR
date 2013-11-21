@@ -11,7 +11,6 @@ from time import time
 
 from types import *
 
-
 # TSE : Taiwan Stock Exchange , 台灣證交所 （上市）
 # OTC : Over-the-Counter , 櫃檯中心 （上櫃）
 # BSR : Buy Sell Report , 分公司買賣進出表
@@ -50,16 +49,21 @@ class DownloadBotBase(object):
         count = 0
         retry = 0
         print 'Total:%d'%len(self.Code())
+        lstRetry = []
         while(len(self.Code())):
             Code = self.Code().pop(0)
             count += 1
             filename = "%s_%s.csv"%(Code,self.Date())
             print 'Process:[%s] Download:%d Left:%d retry:%d'%(Code,count,len(self.Code()),retry)
-            
             ret = self.RunImp(Code, filename)
 
             if None == ret:
                 self.setCode(Code)
+                if lstRetry.count(Code) > 3:
+                    print '%s 下載三次失敗'%(Code)
+                    lstRetry = [x for x in lstRetry if x != Code ]
+                    continue
+                lstRetry.append(Code)         
                 retry += 1
                 count -= 1
                 print '********fail*******'
@@ -85,6 +89,7 @@ class DownloadTSEBot(DownloadBotBase):
                 soup = BeautifulSoup(html)
                 __VIEWSTATE  = soup.find(attrs={"id": "__VIEWSTATE"})['value']
                 sp_Date  = soup.find(attrs={"id":"sp_Date"}).contents[0]
+                print 'Trade date(%s)'%sp_Date
                 __EVENTVALIDATION = soup.find(attrs={"id": "__EVENTVALIDATION"})['value']#.get('Value')
         
                 PostDataDict = {'__EVENTTARGET':''
@@ -205,18 +210,15 @@ def getCodeDict():
     with open('data/smast.dat','r') as f:
         for row in f:
             try:
-                code = row[:6].strip()
-                row = row.decode('utf-8').encode('cp950')
-                if len(code)== 4 : #忽略權證,公司債
-                    print '(%d)%s'%(len(row),row[6:13])
+                if len(row[:6].strip())== 4 : #忽略權證,公司債
+                    print row[:13]
                     if row[12] == '0': #TSE_上市
-                        CodeDict['TSE'].append(code)
-                    elif row[12] == '1': #OTC_上櫃
-                        CodeDict['OTC'].append(code)
-                    else:
-                        print u'*************************'
+                        CodeDict['TSE'].append(row[:4])
+                    if row[12] == '1': #OTC_上櫃
+                        CodeDict['OTC'].append(row[:4]) 
             except IndexError:
                 print 'You have an empty row'    
+        sleep(5)
     return CodeDict
         
 if __name__ == '__main__':
@@ -226,21 +228,26 @@ if __name__ == '__main__':
     CodeDict = getCodeDict()
     print 'TSE:%d OTC:%d'%(len(CodeDict['TSE']),len(CodeDict['OTC']))
     
+    tradedate = '20131121'
+    
     tStart = time()
-
+    
+    OTC = DownloadOTCBot()
+    OTC.setDate(tradedate)
+    OTC.setCode(CodeDict['OTC'])
+    OTC.Run()
+    
+    tEndOTC = time()
+    
     TSE = DownloadTSEBot()
-    TSE.setDate("20131120")
+    TSE.setDate(tradedate)
     TSE.setCode(CodeDict['TSE'])
     TSE.Run()
     tEndTSE = time()
     
-    OTC = DownloadOTCBot()
-    OTC.setDate('20131120')
-    OTC.setCode(CodeDict['OTC'])
-    OTC.Run()
-    tEndOTC = time()
 
-    print 'End...TSE(%f) OTC(%f) Total(%f)'%(tEndTSE-tStart,tEndOTC-tEndTSE,tEndOTC-tStart)
+
+    print 'End...TSE(%f) OTC(%f) Total(%f)'%(tEndTSE-tEndOTC,tEndOTC-tStart,tEndTSE-tStart)
 
     
 
