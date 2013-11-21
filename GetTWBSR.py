@@ -210,8 +210,10 @@ def getCodeDict():
     with open('data/smast.dat','r') as f:
         for row in f:
             try:
-                if len(row[:6].strip())== 4 : #忽略權證,公司債
-                    print row[:13]
+                code = row[:6].strip()
+                row = row.decode('utf-8').encode('cp950')
+                if len(code)== 4 : #忽略權證,公司債
+                    print row[:13].decode('cp950').encode('utf-8')
                     if row[12] == '0': #TSE_上市
                         CodeDict['TSE'].append(row[:4])
                     if row[12] == '1': #OTC_上櫃
