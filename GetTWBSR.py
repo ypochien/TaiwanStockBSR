@@ -67,20 +67,15 @@ class DownloadTSEBot(ThreadingDownloadBot):
                 req = urllib2.Request(base_url)
                 response = urllib2.urlopen(req)
                 html = response.read()
-                soup = BeautifulSoup(html)
-                __VIEWSTATE  = soup.find(attrs={"id": "__VIEWSTATE"})['value']
-                sp_Date  = soup.find(attrs={"id":"sp_Date"}).contents[0]
-                print 'Trade date(%s)'%sp_Date
-                __EVENTVALIDATION = soup.find(attrs={"id": "__EVENTVALIDATION"})['value']
-        
+ 
                 PostDataDict = {'__EVENTTARGET':''
                                 , '__EVENTARGUMENT':''
                                 ,'HiddenField_page':'PAGE_BS'
                                 ,'txtTASKNO':Code
                                 ,'hidTASKNO':Code
-                                ,'__VIEWSTATE':__VIEWSTATE
-                                ,'__EVENTVALIDATION':__EVENTVALIDATION
-                                ,'HiddenField_spDate':sp_Date
+                                ,'__VIEWSTATE':re.findall(u'id="__VIEWSTATE" value="(.*)" />',html)[0]
+                                ,'__EVENTVALIDATION':re.findall(u'id="__EVENTVALIDATION" value="(.*)" />',html)[0]
+                                ,'HiddenField_spDate':re.findall(u'id="sp_Date" name="sp_Date" style="display: none;">(.*)</span>',html)[0]
                                 ,'btnOK':'%E6%9F%A5%E8%A9%A2'}
                 
                 postData = urllib.urlencode( PostDataDict)
@@ -88,7 +83,7 @@ class DownloadTSEBot(ThreadingDownloadBot):
                 response = urllib2.urlopen( req)
                 html = response.read()
                 soup = BeautifulSoup(html)
-                MaxPageNum  = soup.find(attrs={"id":"sp_ListCount"}).contents[0]
+                MaxPageNum  = re.findall(u'<span id="sp_ListCount">(.*)</span>',html)[0]
                 return MaxPageNum
             except Exception,e:
                 #print e
