@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from bs4 import BeautifulSoup
+import re
 import urllib2,urllib
 import sys
 import csv
@@ -52,64 +53,6 @@ class ThreadingDownloadBot(threading.Thread):
                 print '\t(%d)Write %s Finish...'%(self.pid,filename)
             
             self.queue.task_done()
-            
-
-class DownloadBotBase(object):
-    def __init__(self):
-        self.name = "Newbie Bot."
-        self.date = strftime('%Y%m%d')
-        self.lstCode = []
-
-    def __str__(self):
-        return self.name
-    
-    def Date(self):
-        return str(self.date)
-    
-    def setDate(self,date):
-        self.date = date
-    
-    def Code(self):
-        return self.lstCode
-         
-    def showCode(self):
-        print '[%s]' % ', '.join(map(str, self.lstCode ))
-    
-    def setCode(self,Code):
-        if type(Code) in [ IntType , StringType ]:
-            if len(str(Code).strip()) != 4: # 只接受4位數的商品
-                return
-            self.lstCode.append(str(Code))
-            
-        elif type(Code) == ListType:
-            self.lstCode += Code
-            
-    def Run(self):
-        count = 0
-        retry = 0
-        print 'Total:%d'%len(self.Code())
-        lstRetry = []
-        while(len(self.Code())):
-            Code = self.Code().pop(0)
-            count += 1
-            filename = "%s_%s.csv"%(Code,self.Date())
-            print 'Process:[%s] Download:%d Left:%d retry:%d'%(Code,count,len(self.Code()),retry)
-            ret = self.RunImp(Code, filename)
-
-            if None == ret:
-                self.setCode(Code)
-                if lstRetry.count(Code) > 3:
-                    print '%s 下載三次失敗'%(Code)
-                    lstRetry = [x for x in lstRetry if x != Code ]
-                    continue
-                lstRetry.append(Code)         
-                retry += 1
-                count -= 1
-                print '********fail*******'
-                sleep( 3 ) #有錯誤停3秒
-                continue
-            print '\tWrite %s Finish...'%(filename)
-        
         
 class DownloadTSEBot(ThreadingDownloadBot):
     def __init__(self,pid,queue,tradedate):
