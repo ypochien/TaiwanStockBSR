@@ -20,26 +20,20 @@ from types import *
 
 
 class ThreadingDownloadBot(threading.Thread):
-    def __init__(self,pid,queue,tradedate):
+    def __init__(self,pid,queue):
         threading.Thread.__init__(self)
         self.queue = queue
-        self.date = tradedate
-        self.pid = pid
-        
-    def Date(self):
-        return str(self.date)
-    def setDate(self,date):
-        self.date = date    
+        self.pid = pid  
     def run(self):
         while(True):
             Code = self.queue.get()
             retry = 0
-            if len(Code) == 5:
+            if len(Code) >= 5:
                 retry = int(Code[4])
-            filename = "%s_%s.csv"%(Code,self.Date())
+                Code = Code[0:4]
+        
             print '[%d]Process:[%s] Left:%d retry:%d'%(self.pid,Code,self.queue.qsize(),retry)
-            ret = self.RunImp(Code, filename)
-
+            ret = self.RunImp(Code)
             if None == ret:
                 retry +=1
                 if retry > 3:
@@ -50,41 +44,44 @@ class ThreadingDownloadBot(threading.Thread):
                     print '********fail*******'
                     sleep( 1 ) #有錯誤停1秒
             else:
-                print '\t(%d)Write %s Finish...'%(self.pid,filename)
+                print '\t(%d)Write %s Finish...'%(self.pid,Code)
             
             self.queue.task_done()
         
 class DownloadTSEBot(ThreadingDownloadBot):
-    def __init__(self,pid,queue,tradedate):
-        super(DownloadTSEBot, self).__init__(pid,queue,tradedate)
+    def __init__(self,pid,queue):
+        super(DownloadTSEBot, self).__init__(pid,queue)
         self.name = "TSE BSR Download Bot."
-    def RunImp(self,Code,filename):
+    def RunImp(self,Code):
 
         # step 1. GetMaxPage and POST data
-        def GetMaxPageNum(Code):
+        def GetDateAndspPage(Code):
             try:
                 base_url = 'http://bsr.twse.com.tw/bshtm/bsMenu.aspx'
                 req = urllib2.Request(base_url)
                 response = urllib2.urlopen(req)
                 html = response.read()
- 
+                __VIEWSTATE = re.findall(u'id="__VIEWSTATE" value="(.*)" />',html)[0]
+                __EVENTVALIDATION = re.findall(u'id="__EVENTVALIDATION" value="(.*)" />',html)[0]
+                HiddenField_spDate = re.findall(u'id="sp_Date" name="sp_Date" style="display: none;">(.*)</span>',html)[0]
+                
                 PostDataDict = {'__EVENTTARGET':''
                                 , '__EVENTARGUMENT':''
                                 ,'HiddenField_page':'PAGE_BS'
-                                ,'txtTASKNO':Code
-                                ,'hidTASKNO':Code
-                                ,'__VIEWSTATE':re.findall(u'id="__VIEWSTATE" value="(.*)" />',html)[0]
-                                ,'__EVENTVALIDATION':re.findall(u'id="__EVENTVALIDATION" value="(.*)" />',html)[0]
-                                ,'HiddenField_spDate':re.findall(u'id="sp_Date" name="sp_Date" style="display: none;">(.*)</span>',html)[0]
+                                ,'txtTASKNO':'2384'
+                                ,'hidTASKNO':'2384'
+                                ,'__VIEWSTATE': __VIEWSTATE
+                                ,'__EVENTVALIDATION':__EVENTVALIDATION
+                                ,'HiddenField_spDate':HiddenField_spDate
                                 ,'btnOK':'%E6%9F%A5%E8%A9%A2'}
-                
+           
                 postData = urllib.urlencode( PostDataDict)
                 req = urllib2.Request( base_url , postData)
                 response = urllib2.urlopen( req)
                 html = response.read()
-                soup = BeautifulSoup(html)
-                MaxPageNum  = re.findall(u'<span id="sp_ListCount">(.*)</span>',html)[0]
-                return MaxPageNum
+                sp_ListCount = re.findall(u'<span id="sp_ListCount">(.*)</span>',html)[0]
+                
+                return (HiddenField_spDate,sp_ListCount)
             except Exception,e:
                 #print e
                 return None
@@ -129,7 +126,7 @@ class DownloadTSEBot(ThreadingDownloadBot):
                 writer.writerows(CSVData)            
         
         self.RawBSR = "TSE"
-        MaxPageNum = GetMaxPageNum(Code)
+        self.date,MaxPageNum = GetDateAndspPage(Code)
         if None == MaxPageNum:
             return None
         BSRawData = GetBSRawData(Code, MaxPageNum)
@@ -140,15 +137,15 @@ class DownloadTSEBot(ThreadingDownloadBot):
         return True
       
 class DownloadOTCBot(ThreadingDownloadBot):
-    def __init__(self,pid,queue,tradedate):
-        super(DownloadOTCBot, self).__init__(pid,queue,tradedate)
+    def __init__(self,pid,queue):
+        super(DownloadOTCBot, self).__init__(pid,queue)
         self.name = "OTC BSR Download Bot."
     
-    def RunImp(self,Code,filename):
+    def RunImp(self,Code):
         
         def DownloadOTC(Code,filename,otcdate):
             try:
-                #otcdate = str(otcyear)+g_date[4:]
+
                 base_url = 'http://www.gretai.org.tw/ch/stock/aftertrading/broker_trading/download_ALLCSV.php'
                 PostDataDict = {'curstk':Code
                                 , 'fromw':'0'
@@ -162,24 +159,35 @@ class DownloadOTCBot(ThreadingDownloadBot):
                 html = response.read()
             except Exception , e:
                 return None
-            with open('BSR/'+filename, 'wb') as f:
-                f.write(html)
-                
+            with open('BSR/'+filename, 'wb') as csvfile:
+                content = '\n'.join(row for row in html.split(',,')[1:])
+                csvfile.write(content)
             return True
         
+        def getOTCDate(Code):
+            baseUrl = "http://www.gretai.org.tw/ch/stock/aftertrading/broker_trading/brokerBS.php"
+            postDataDict = {
+                'stk_code' : Code
+            }
+            postData = urllib.urlencode( postDataDict)
+            req = urllib2.Request( baseUrl , postData)
+            response = urllib2.urlopen(req)
+            html = response.read()    
+            date_list = re.findall(u'<input type="hidden" name="stk_date" value=(.*)>',html)
+            for date in date_list:
+                return date
+            return None
+        
         self.RawBSR = "OTC"
-        ret = DownloadOTC(Code,filename,self.getOtcDate())
+        otcDate = getOTCDate(Code)
+        if otcDate == None:
+            return None
+        
+        filename = "%s_%d%s.csv"%(Code,int(otcDate[0:3])+1911,otcDate[3:]) 
+        ret = DownloadOTC(Code,filename,otcDate)
         if None == ret:
             return None
         return True
-            
-    def getOtcDate(self):
-        otcyear = int(self.date)/int(10000) - 1911
-        otcdate = str(otcyear) + self.date[4:]
-        return otcdate
-    
-    def setOtcDate(self,date):
-        self.date =  str(int(date[0:3]) + 1911) + date[3:] #1020101
 
 def getCodeDict():
     CodeDict = {'TSE' : [] , 'OTC': [] } 
@@ -205,30 +213,27 @@ if __name__ == '__main__':
     print 'Start...'
     CodeDict = getCodeDict()
     print 'TSE:%d OTC:%d'%(len(CodeDict['TSE']),len(CodeDict['OTC']))
-    
-    tradedate = '20131121'
-    
     tStart = time()
-    
+
     OTCqueue = Queue.Queue() 
     for i in range(20):
-        t = DownloadOTCBot(i,OTCqueue,tradedate)
+        t = DownloadOTCBot(i,OTCqueue)
         t.setDaemon(True)
         t.start()
-    TSEqueue = Queue.Queue()
-    for i in range(3):
-        t = DownloadTSEBot(i,TSEqueue,tradedate)
-        t.setDaemon(True)
-        t.start()        
+    #TSEqueue = Queue.Queue()
+    #for i in range(3):
+    #    t = DownloadTSEBot(i,TSEqueue)
+    #    t.setDaemon(True)
+    #    t.start()        
 
     for Code in CodeDict['OTC']:
         OTCqueue.put(Code)
         
-    for Code in CodeDict['TSE']:
-        TSEqueue.put(Code)
+    #for Code in CodeDict['TSE']:
+    #    TSEqueue.put(Code)
 
     OTCqueue.join()
-    TSEqueue.join()
+    #TSEqueue.join()
     
     #OTC = DownloadOTCBot()
     #OTC.setDate(tradedate)
