@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from bs4 import BeautifulSoup
+
 import re
 import urllib2,urllib
 import sys
@@ -68,8 +68,8 @@ class DownloadTSEBot(ThreadingDownloadBot):
                 PostDataDict = {'__EVENTTARGET':''
                                 , '__EVENTARGUMENT':''
                                 ,'HiddenField_page':'PAGE_BS'
-                                ,'txtTASKNO':'2384'
-                                ,'hidTASKNO':'2384'
+                                ,'txtTASKNO':Code
+                                ,'hidTASKNO':Code
                                 ,'__VIEWSTATE': __VIEWSTATE
                                 ,'__EVENTVALIDATION':__EVENTVALIDATION
                                 ,'HiddenField_spDate':HiddenField_spDate
@@ -80,11 +80,10 @@ class DownloadTSEBot(ThreadingDownloadBot):
                 response = urllib2.urlopen( req)
                 html = response.read()
                 sp_ListCount = re.findall(u'<span id="sp_ListCount">(.*)</span>',html)[0]
-                
                 return (HiddenField_spDate,sp_ListCount)
             except Exception,e:
                 #print e
-                return None
+                return (None,None)
         
         # step 2. GetRawData
         def GetBSRawData(Code,MaxPageNum):
@@ -99,39 +98,53 @@ class DownloadTSEBot(ThreadingDownloadBot):
         
         # step 3. RawToCSV
         def BSRawToCSV(BSRaw):
-            soup = BeautifulSoup(BSRaw)
-            #取得資料表title 
-            title_contents =  soup.find(attrs={ 'class': 'column_title_1'})
-            title_list = title_contents.find_all('td')
-            title = [title.get_text().encode('cp950') for title in title_list]
             
+            #取得資料表title 
+            '''
+            <tr class='column_title_1'>     <td>序</td>     <td>證券商</td>     <td>成交單價</td>     <td>買進股數</td>     <td>賣出股數</td>   </tr>
+            '''
+            title_tr_pattern = u"<tr class='column_title_1'>(.*?)<\/tr>"
+            title_tr = re.compile(title_tr_pattern)
+            result_tr = title_tr.findall(BSRaw)
+            title_td_pattern = u'<td *>\B(.*?)</td>'
+            title_td = re.compile(title_td_pattern)
+            result_td = title_td.findall(result_tr[0])            
+            title = ','.join(title.decode('utf-8').encode('cp950') for title in result_td)
             #取得各分公司買賣內容
-            stock_info_content = soup.find_all(attrs={'class':['column_value_price_3','column_value_price_2']})
-            CSVData = []
-            for i in stock_info_content:
-                row_list = i.find_all('td')
-                row = [row.get_text().strip().encode('cp950') for row in row_list]
-                if len(row[0]) > 0:
-                    #print '[%s]'%row[0]
-                    CSVData.append(row)
-            #使用序號排序,因為網頁奇偶數沒穿插
-            CSVData.sort(key=lambda element: int(element[0]))
+            td = '''
+                    <td class='column_value_center'>               1</td>        <td class='column_value_left'>                 1233  彰銀台中</td>        <td class='column_value_right'>               8.65</td>        <td class='column_value_right'>               0</td>        <td class='column_value_right'>               20,000</td>     
+            '''
+            content_tr_pattern = u"<tr class='column_value_price_[23]'>(.*?)<\/tr>"
+            content_tr = re.compile(content_tr_pattern)
+            result_tr_content = content_tr.findall(BSRaw)
+            content_td_pattern = u"<td \S*>(.*?)</td>"
+            content_td = re.compile(content_td_pattern)
+            content_list = []
+            for tr in result_tr_content:
+                result_td = content_td.findall(tr)
+                row =  ','.join(td.replace(',','').strip() for td in result_td if td.strip()[0] not in ['<','&'])
+                if len(row) == 0:
+                    continue
+                content_list.append(row.decode('utf-8').encode('cp950'))
+            sortedlist = sorted(content_list,key = lambda s: int(s.split(',')[0]))
             #將Title加入資料首列
-            CSVData.insert(0, title) 
-            return CSVData
+            sortedlist.insert(0,title)
+            return sortedlist
         
         def CSVToFile(CSVData,filename):
             with open('BSR/'+filename, 'wb') as csvfile:
-                writer = csv.writer(csvfile,dialect='excel')
-                writer.writerows(CSVData)            
-        
+                content = '\n'.join(row for row in CSVData)
+                csvfile.write(content)
+                
         self.RawBSR = "TSE"
         self.date,MaxPageNum = GetDateAndspPage(Code)
-        if None == MaxPageNum:
+        print Code , self.date , MaxPageNum
+        if None == MaxPageNum or "" == MaxPageNum:
             return None
         BSRawData = GetBSRawData(Code, MaxPageNum)
         if None == BSRawData:
             return None
+        filename = "%s_%s.csv"%(Code,self.date) 
         CSVData = BSRawToCSV(BSRawData)
         CSVToFile(CSVData, filename)
         return True
@@ -145,7 +158,6 @@ class DownloadOTCBot(ThreadingDownloadBot):
         
         def DownloadOTC(Code,filename,otcdate):
             try:
-
                 base_url = 'http://www.gretai.org.tw/ch/stock/aftertrading/broker_trading/download_ALLCSV.php'
                 PostDataDict = {'curstk':Code
                                 , 'fromw':'0'
@@ -220,37 +232,26 @@ if __name__ == '__main__':
         t = DownloadOTCBot(i,OTCqueue)
         t.setDaemon(True)
         t.start()
-    #TSEqueue = Queue.Queue()
-    #for i in range(3):
-    #    t = DownloadTSEBot(i,TSEqueue)
-    #    t.setDaemon(True)
-    #    t.start()        
+    
+    TSEqueue = Queue.Queue()
+    for i in range(3):
+        t = DownloadTSEBot(i,TSEqueue)
+        t.setDaemon(True)
+        t.start()        
 
     for Code in CodeDict['OTC']:
         OTCqueue.put(Code)
         
-    #for Code in CodeDict['TSE']:
-    #    TSEqueue.put(Code)
+    for Code in CodeDict['TSE']:
+        TSEqueue.put(Code)
+    
 
     OTCqueue.join()
-    #TSEqueue.join()
+    TSEqueue.join()
     
-    #OTC = DownloadOTCBot()
-    #OTC.setDate(tradedate)
-    #OTC.setCode(CodeDict['OTC'])
-    #OTC.Run()
-    
-    tEndOTC = time()
-    
-    #TSE = DownloadTSEBot()
-    #TSE.setDate(tradedate)
-    #TSE.setCode(CodeDict['TSE'])
-    #TSE.Run()
     tEndTSE = time()
-    
 
-
-    print 'End...TSE(%f) OTC(%f) Total(%f)'%(tEndTSE-tEndOTC,tEndOTC-tStart,tEndTSE-tStart)
+    print 'End...Total(%f)'%(tEndTSE-tStart)
 
     
 
