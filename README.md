@@ -30,6 +30,6 @@ Python practice.
 ##Todo.
 
  * ~~add OTC information.~~
- * maybe using 're' replace BeautifulSoup
+ * ~~maybe using 're' replace BeautifulSoup~~
  * csv to db
  * Web GUI...
