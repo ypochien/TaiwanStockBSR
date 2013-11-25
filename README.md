@@ -15,7 +15,8 @@ Python practice.
 ###require module 
   BeautifulSoup - http://www.crummy.com/software/BeautifulSoup/ 
  
- 1. install BeautifulSoup
+ ~~1. install BeautifulSoup~~ 
+ 改用內建的re來處理網頁
 
  2. run  
  <code>
