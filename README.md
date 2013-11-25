@@ -13,7 +13,9 @@ Python practice.
 ##usage:
 
 ###require module 
-  BeautifulSoup - http://www.crummy.com/software/BeautifulSoup/ 
+  
+ 
+ ~~BeautifulSoup - http://www.crummy.com/software/BeautifulSoup/ ~~
  
  ~~1. install BeautifulSoup~~ 
  改用內建的re來處理網頁
