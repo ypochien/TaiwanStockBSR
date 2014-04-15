@@ -5,7 +5,7 @@ This's something to do for me.
 
 Python practice. 
 
-##collect Taiwan Stock Exchange information toolkit. 
+##collection Taiwan Stock Exchange information toolkit. 
 
  1. TSE - http://bsr.twse.com.tw/bshtm/
  1. OTC - http://www.gretai.org.tw/ch/stock/aftertrading/broker_trading/brokerBS.php
