@@ -24,27 +24,28 @@ class ThreadingDownloadBot(threading.Thread):
         threading.Thread.__init__(self)
         self.queue = queue
         self.pid = pid  
+
     def run(self):
         while(True):
             Code = self.queue.get()
             retry = 0
-            if len(Code) >= 5:
-                retry = int(Code[4])
-                Code = Code[0:4]
-        
-            print '[%d]Process:[%s] Left:%d retry:%d'%(self.pid,Code,self.queue.qsize(),retry)
+            if ',' in Code:
+                retry = int(Code.split(',')[1])
+                Code = Code.split(',')[0]
+
+            print '[%d]Process:[%s] Left:%d retry:%d\n'%(self.pid,Code,self.queue.qsize(),retry)
             ret = self.RunImp(Code)
             if None == ret:
                 retry +=1
                 if retry > 3:
-                    print '%s 下載三次失敗'%(Code)
+                    print u'%s 下載三次失敗'%(Code)
                 else:
-                    retryCode = Code+str(retry)
+                    retryCode = '%s,%d'%(Code,retry)
                     self.queue.put(retryCode)
-                    print '********fail*******'
+                    print '********fail(%s)*******'%(retryCode)
                     sleep( 1 ) #有錯誤停1秒
             else:
-                print '\t(%d)Write %s Finish...'%(self.pid,Code)
+                print '\t(%d)Write %s Finish...\n'%(self.pid,Code)
             
             self.queue.task_done()
         
@@ -138,7 +139,7 @@ class DownloadTSEBot(ThreadingDownloadBot):
                 
         self.RawBSR = "TSE"
         self.date,MaxPageNum = GetDateAndspPage(Code)
-        print Code , self.date , MaxPageNum
+        #print Code , self.date , MaxPageNum
         if None == MaxPageNum or "" == MaxPageNum:
             return None
         BSRawData = GetBSRawData(Code, MaxPageNum)
@@ -158,26 +159,21 @@ class DownloadOTCBot(ThreadingDownloadBot):
         
         def DownloadOTC(Code,filename,otcdate):
             try:
-                base_url = 'http://www.gretai.org.tw/ch/stock/aftertrading/broker_trading/download_ALLCSV.php'
-                PostDataDict = {'curstk':Code
-                                , 'fromw':'0'
-                                ,'numbern':'100'
-                                ,'stk_date':otcdate
-                                }
-            
-                postData = urllib.urlencode( PostDataDict)
-                req = urllib2.Request( base_url , postData)
-                response = urllib2.urlopen( req)
+                base_url = r'http://www.gretai.org.tw/web/stock/aftertrading/broker_trading/download_ALLCSV.php?curstk={}&stk_date={}'.format(Code,otcdate)
+                response = urllib2.urlopen(base_url)
                 html = response.read()
+
             except Exception , e:
+                print e
                 return None
+
             with open('BSR/'+filename, 'wb') as csvfile:
                 content = '\n'.join(row for row in html.split(',,')[1:])
                 csvfile.write(content)
             return True
-        
+
         def getOTCDate(Code):
-            baseUrl = "http://www.gretai.org.tw/ch/stock/aftertrading/broker_trading/brokerBS.php"
+            baseUrl = "http://www.gretai.org.tw/web/stock/aftertrading/broker_trading/brokerBS.php"
             postDataDict = {
                 'stk_code' : Code
             }
@@ -185,13 +181,15 @@ class DownloadOTCBot(ThreadingDownloadBot):
             req = urllib2.Request( baseUrl , postData)
             response = urllib2.urlopen(req)
             html = response.read()    
-            date_list = re.findall(u'<input type="hidden" name="stk_date" value=(.*)>',html)
+
+            date_list = re.findall(u'<input type="hidden" id="stk_date" name="stk_date" value=(.*)>',html)
             for date in date_list:
                 return date
             return None
-        
+
         self.RawBSR = "OTC"
         otcDate = getOTCDate(Code)
+        #print "DATE : "+str(otcDate)
         if otcDate == None:
             return None
         
@@ -201,30 +199,23 @@ class DownloadOTCBot(ThreadingDownloadBot):
             return None
         return True
 
-def getCodeDict():
-    CodeDict = {'TSE' : [] , 'OTC': [] } 
-    with open('data/smast.dat','r') as f:
+def getCodeListFromCSV(filename):
+    CodeList = []
+    with open(filename,'r') as f:
         for row in f:
-            try:
-                code = row[:6].strip()
-                row = row.decode('utf-8').encode('cp950')
-                if len(code)== 4 : #忽略權證,公司債
-                    print row[:13].decode('cp950').encode('utf-8')
-                    if row[12] == '0': #TSE_上市
-                        CodeDict['TSE'].append(row[:4])
-                    if row[12] == '1': #OTC_上櫃
-                        CodeDict['OTC'].append(row[:4]) 
-            except IndexError:
-                print 'You have an empty row'    
-        sleep(5)
-    return CodeDict
+            code = row.split(',')[0]
+            CodeList.append(code)
+    return CodeList
         
 if __name__ == '__main__':
     if not os.path.exists('BSR'):
         os.makedirs('BSR')    
     print 'Start...'
-    CodeDict = getCodeDict()
+    CodeDict = {}
+    CodeDict['TSE'] = getCodeListFromCSV('TSECode.csv')
+    CodeDict['OTC'] = getCodeListFromCSV('OTCCode.csv')
     print 'TSE:%d OTC:%d'%(len(CodeDict['TSE']),len(CodeDict['OTC']))
+
     tStart = time()
 
     OTCqueue = Queue.Queue() 
@@ -240,11 +231,12 @@ if __name__ == '__main__':
         t.start()        
 
     for Code in CodeDict['OTC']:
+        #print Code
         OTCqueue.put(Code)
         
     for Code in CodeDict['TSE']:
+        #print Code
         TSEqueue.put(Code)
-    
 
     OTCqueue.join()
     TSEqueue.join()
@@ -252,7 +244,3 @@ if __name__ == '__main__':
     tEndTSE = time()
 
     print 'End...Total(%f)'%(tEndTSE-tStart)
-
-    
-
-
