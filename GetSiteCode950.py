@@ -34,16 +34,8 @@ if __name__ == '__main__' :
 	lstSite = sorted(lstSite,key = lambda x : x[0])
 
 	#output csv wiht big5 encoding for excel
-#	with open('SiteCode.csv','wb') as siteCsvFile:
-#		csvWriter = csv.writer(siteCsvFile)
-#		csvWriter.writerows(lstSite)
-
-	#output csv with pandas and unicode encoding, for mac
-#	for i in lstSite:
-#		i[1] = i[1].decode('cp950').encode('utf-8')
-	df = DataFrame(lstSite)
-	print df.shape
-	df.columns = ['bank_id', 'name']
-	df.to_csv('SiteCode.csv', encode='utf-8', index=False)
+	with open('SiteCode.csv','wb') as siteCsvFile:
+		csvWriter = csv.writer(siteCsvFile)
+		csvWriter.writerows(lstSite)
 
 

@@ -6,6 +6,9 @@
 from types import *
 from lxml.html import parse
 import csv
+import pandas as pd
+from pandas import Series, DataFrame
+
 tse_url = "http://isin.twse.com.tw/isin/C_public.jsp?strMode=2"
 otc_url = "http://isin.twse.com.tw/isin/C_public.jsp?strMode=4"
 
@@ -27,9 +30,21 @@ def ToCsv(CSVData, filename):
 		csvfile.write(content.encode('cp950'))
 		print("write %s ok."%(filename))
 
+def format_for_mac(filename):
+    #additional process for csv to avoid displaying 'garbled text' on Mac
+	df = pd.read_csv(filename, encoding='cp950')
+	print df.shape
+	df.columns = ['id', 'name']
+	df.to_csv(filename, encoding='utf-8', index=False)
+
 if __name__ == '__main__':
 	TSE_Code = getCode(tse_url)
 	ToCsv(TSE_Code,"TSECode.csv")
 
 	OTC_Code = getCode(otc_url)
 	ToCsv(OTC_Code, "OTCCode.csv")
+
+	format_for_mac("TSECode.csv")
+	format_for_mac("OTCCode.csv")
+
+
